@@ -2,7 +2,7 @@
 
 %% package declaration
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesPackage{bxglyphwiki}[2013/10/16 v0.2]
+\ProvidesPackage{bxglyphwiki}[2015/02/26 v0.3]
 %
 \def\bxgw@pkgname{bxglyphwiki}
 \def\bxgw@error{\PackageError\bxgw@pkgname}
@@ -179,6 +179,7 @@
 
 %% variables
 \newdimen\bxgw@zw % zenkaku width
+\newwrite\bxgw@out
 
 %% strings
 \def\bxgw@@ast{*}
@@ -216,6 +217,19 @@
   \settowidth\bxgw@zw{\bxgw@zs}%
 }
 
+%% \bxgw@set@real@param
+\def\bxgw@set@real@param#1#2{%
+  \def\bxgw@next{\edef#1{\strip@pt\bxgw@zw}}%
+  \afterassignment\bxgw@srp@a\bxgw@zw=#2\p@\bxgw@stop
+}
+\def\bxgw@srp@a#1\bxgw@stop{%
+  \ifx\bxgw@end#1\bxgw@end
+    \bxgw@next
+  \else
+    \bxgw@error{Illegal number format}\@ehc
+  \fi
+}
+
 %% \bxgw@nunc : current timestamp
 %% \bxgw@tunc : cache limit timestamp
 \begingroup
@@ -245,10 +259,14 @@
 
 %--------------------------------------- glyph output
 
-%% \bxgw@scl : glyph scale (constant)
+%% \bxgw@scl : glyph scale
 \def\bxgw@scl{1.05}
+%% \bxgw@yadj : vertical adjustment (yoko)
+\def\bxgw@yadj{0}
+%% \bxgw@tadj : vertical adjustment (tate)
+\def\bxgw@tadj{0}
 %% \bxgw@bb : bounding box
-\def\bxgw@bb{0 0 1024 1024}
+\def\bxgw@bb{0 0 200 200}
 
 %% set \ifbxgw@use@bb
 % Bbox is used only by dvipdfmx driver.
@@ -261,13 +279,19 @@
 % Places a glyph image as if it were a kanji.
 \def\bxgw@use@img#1{%
   \def\bxgw@img@file{#1}%
+  \ifbxgw@tdir
+    \@tempdima\bxgw@tadj\bxgw@zw
+    \advance\@tempdima-0.5\bxgw@zw
+  \else
+    \@tempdima\bxgw@yadj\bxgw@zw
+    \advance\@tempdima-0.12\bxgw@zw
+  \fi
+  \edef\bxgw@vertadj{\the\@tempdima}%
   \edef\bxgw@next{\bxgw@img@args}%
   \bxgw@next
 }
 \def\bxgw@img@args{%
-  \noexpand\raisebox
-  \ifbxgw@tdir {-0.5\bxgw@zw}%
-  \else {-0.12\bxgw@zw}\fi
+  \noexpand\raisebox{\bxgw@vertadj}%
   {\noexpand\makebox[\bxgw@zw][c]{%
     \ifbxgw@tdir\noexpand\rotatebox[origin=c]{90}\fi{%
     \noexpand\includegraphics
@@ -299,6 +323,21 @@
 \let\bxgw@glyph\@empty % glyph name
 \let\bxgw@rev\@empty   % version spec (number macro)
 \let\bxgw@mode\relax   % mode spec (pseudovar)
+
+%%<*> \setgwscale{<real>}
+\newcommand*\setgwscale[1]{%
+  \bxgw@set@real@param\bxgw@scl{#1}%
+}
+
+%%<*> \setgwyvertadjust{<real>}
+\newcommand*\setgwyvertadjust[1]{%
+  \bxgw@set@real@param\bxgw@yadj{#1}%
+}
+
+%%<*> \setgwtvertadjust{<real>}
+\newcommand*\setgwtvertadjust[1]{%
+  \bxgw@set@real@param\bxgw@tadj{#1}%
+}
 
 %%<*> \GWI[*][<ver-spec>]{<glyph>}
 % Prints a glyph!
@@ -342,6 +381,7 @@
 
 %% \bxgw@annihilate
 \def\bxgw@annihilate{%
+  \let\bxgw@annihilated=t%
   \let\bxgw@main\bxgw@abort
   \chardef\bxgw@download\z@
 }
@@ -373,6 +413,9 @@
 %% \bxgw@resp@file
 \def\bxgw@resp@file{%
   \bxgw@wdir/\bxgw@pfx_resp_.def}
+%% \bxgw@bbox@file
+\def\bxgw@bbox@file{%
+  \bxgw@wdir/\bxgw@pfx_bbox_.def}
 %% \bxgw@info@file
 \def\bxgw@info@file{%
   \bxgw@wdir/\bxgw@pfx_\bxgw@glyph.def}
@@ -470,11 +513,12 @@
 
 %% \bxgw@put@glyph
 \def\bxgw@put@glyph{%
-  \ifbxgw@ok\else
+  \bxgw@cond\ifbxgw@ok\fi{}{%else
     \bxgw@exec@get
     \bxgw@cond\ifx\bxgw@resp\@empty\fi{\bxgw@abort}{}%
+    \bxgw@save@bb
     \ifbxgw@use@bb \let\bxgw@bb\bxgw@resp \fi
-  \fi
+  }%
   \IfFileExists{\bxgw@glyph@file}{%
     \bxgw@use@img{\bxgw@glyph@file}%
   }{%else
@@ -483,6 +527,16 @@
     \bxgw@abort
   }%
 }
+
+%% \bxgw@save@bb
+\def\bxgw@save@bb{%
+  \def\bxgw@tmpb{ok}\ifx\bxgw@tmpb\bxgw@resp\else
+    \immediate\openout\bxgw@out=\bxgw@bbox@file\relax
+    \immediate\write\bxgw@out{\noexpand\do{\bxgw@resp}\relax}%
+    \immediate\closeout\bxgw@out
+  \fi
+}
+
 %--------------------------------------- string validation
 
 %% \bxgw@validate{<string>}
@@ -599,6 +653,14 @@
 %% invoke ping
 \ifnum\bxgw@download>\z@
   \bxgw@exec@ping
+\fi
+
+%% read saved bbox
+\ifx t\bxgw@annihilated\else
+  \ifbxgw@use@bb
+    \def\do{\def\bxgw@bb}%
+    \InputIfFileExists{\bxgw@bbox@file}{}{}%
+  \fi
 \fi
 
 %--------------------------------------- all done

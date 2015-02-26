@@ -9,10 +9,10 @@ end
 local M = bxglyphwiki
 ---------------------------------------- interfaces
 M.prog_name = "bxglyphwiki"
-M.version = "0.2"
-M.mod_date = "2013/10/16"
+M.version = "0.3"
+M.mod_date = "2015/02/26"
 M.url_json = "http://glyphwiki.org/json?name=%s"
-M.url_eps = "http://glyphwiki.org/glyph/%s@%d.eps"
+M.url_svg = "http://glyphwiki.org/glyph/%s@%d.svg"
 M.epstopdf = "epstopdf"
 M.extractbb = "extractbb"
 do
@@ -135,9 +135,83 @@ do
     return tonumber(rev), (rel) and tonumber(rel, 16) or 0x3013
   end
 end
+---------------------------------------- svg-to-eps
+do
+  local W, H = 200, 200
+  local bbox = ("%d %d %d %d"):format(0, 0, W, H)
+  local prologue =
+    '<svg xmlns="http://www.w3.org/2000/svg" '..
+    'xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" '..
+    'baseProfile="full" viewBox="'..bbox..'" width="'..W..'" '..
+    'height="'..H..'"> <g fill="black"> <path d="'
+  local epilogue =
+    '" /> </g> </svg>'
+  local function num(r)
+    return ("%.4f"):format(r):gsub("0+$", ""):gsub("%.$", "")
+  end
+  local function eps_line(...)
+    local t = {...}
+    for i = 1, #t do
+      t[i] = (type(t[i]) == "number") and num(t[i]) or tostring(t[i])
+    end
+    return table.concat(t, " ")
+  end
+  local function parse_path(src)
+    local op, ot, c = nil, nil, 0
+    local v, epsls = {}, {}
+    for w in src:gmatch("(%S+)") do
+      if c > 0 then
+        w = tonumber(w); v[c] = w; c = c - 1
+        if not w then return end
+      elseif w == "M" then
+        op, ot, c = "moveto", "xy", 2
+      elseif w == "L" then
+        op, ot, c = "lineto", "xy", 2
+      elseif w == "Z" then
+        op, ot, c = "closepath", "", 0
+      else return
+      end
+      if c == 0 then
+        if ot == "xy" then
+          w = eps_line(v[2], H - v[1], op)
+        else
+          w = eps_line(op)
+        end
+        table.insert(epsls, w)
+      end
+    end
+    return epsls
+  end
+  local function form_eps(bbox, epsls)
+    local s = table.concat(epsls, "\n")
+    return ([[
+%!PS-Adobe-3.0 EPSF-3.0
+%%BoundingBox: ]]..bbox..[[
+
+%%EndComments
+gsave
+]]..s..[[
+
+fill
+grestore
+%%EOF
+]])
+  end
+  function M.svg_to_eps(svgsrc)
+    local src = svgsrc:gsub("%s+", " "):gsub(" $", "")
+    if src:sub(1, #prologue) == prologue
+        and src:sub(-#epilogue) == epilogue then
+      src = src:sub(#prologue + 1, -#epilogue - 1)
+      src = form_eps(bbox, parse_path(src))
+      return src
+    end
+  end
+end
 ---------------------------------------- glyph files
 do
-  function M.write_glyph(eps, fbase)
+  function M.write_glyph(svg, fbase)
+    local eps = M.svg_to_eps(svg)
+    M.sure(eps, "SVG->EPS conversion failure")
     local pbase = M.ppfx..fbase
     local epsh = io.open(pbase..".eps", "wb")
     M.sure(epsh, "cannot open for output", pbase..".eps")
@@ -188,8 +262,8 @@ do
     rev = M.sure(tonumber(rev), "bad number format", rev)
     local info = M.read_info(glyph)
     local fbase = M.glyph_fbase:format(glyph, rev)
-    local eps = M.http_get(M.url_eps:format(glyph, rev))
-    M.write_glyph(eps, fbase)
+    local svg = M.http_get(M.url_svg:format(glyph, rev))
+    M.write_glyph(svg, fbase)
     info[rev] = M.timestamp()
     M.write_info(glyph, info)
     if M.use_bbox() then
