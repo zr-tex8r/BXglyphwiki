@@ -9,8 +9,8 @@ end
 local M = bxglyphwiki
 ---------------------------------------- interfaces
 M.prog_name = "bxglyphwiki"
-M.version = "0.3"
-M.mod_date = "2015/02/26"
+M.version = "0.3a"
+M.mod_date = "2015/05/06"
 M.url_json = "http://glyphwiki.org/json?name=%s"
 M.url_svg = "http://glyphwiki.org/glyph/%s@%d.svg"
 M.epstopdf = "epstopdf"
@@ -137,15 +137,18 @@ do
 end
 ---------------------------------------- svg-to-eps
 do
-  local W, H = 200, 200
-  local bbox = ("%d %d %d %d"):format(0, 0, W, H)
   local prologue =
     '<svg xmlns="http://www.w3.org/2000/svg" '..
     'xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" '..
-    'baseProfile="full" viewBox="'..bbox..'" width="'..W..'" '..
-    'height="'..H..'"> <g fill="black"> <path d="'
+    'baseProfile="full" viewBox="0 0 200 200" width="200" '..
+    'height="200"> <g fill="black"> '
   local epilogue =
-    '" /> </g> </svg>'
+    ' </g> </svg>'
+  local function unenclose(str, pre, post)
+    if str:sub(1, #pre) == pre and str:sub(-#post) == post then
+      return str:sub(#pre + 1, -#post - 1)
+    end
+  end
   local function num(r)
     return ("%.4f"):format(r):gsub("0+$", ""):gsub("%.$", "")
   end
@@ -155,6 +158,9 @@ do
       t[i] = (type(t[i]) == "number") and num(t[i]) or tostring(t[i])
     end
     return table.concat(t, " ")
+  end
+  local function eps_line_xy(x, y, op)
+    return eps_line(x * 5, 800 - y * 5, op)
   end
   local function parse_path(src)
     local op, ot, c = nil, nil, 0
@@ -173,7 +179,7 @@ do
       end
       if c == 0 then
         if ot == "xy" then
-          w = eps_line(v[2], H - v[1], op)
+          w = eps_line_xy(v[2], v[1], op)
         else
           w = eps_line(op)
         end
@@ -182,12 +188,29 @@ do
     end
     return epsls
   end
-  local function form_eps(bbox, epsls)
+  local function parse_polygon(src)
+    src = src:gsub("> ", ">\n")
+    local epsls = {}; local x, y, _
+    for l in src:gmatch("([^\n]+)") do
+      local a = unenclose(l, '<polygon points="', '" />')
+      if not a then return end
+      local op = "moveto"
+      for w in a:gmatch("(%S+)") do
+        _, _, x, y = w:find("^([-.%d]+),([-.%d]+)$")
+        x, y = tonumber(x), tonumber(y)
+        table.insert(epsls, eps_line_xy(x, y, op))
+        op = "lineto"
+      end
+      table.insert(epsls, eps_line("closepath"))
+      table.insert(epsls, eps_line("fill"))
+    end
+    return epsls
+  end
+  local function form_eps(epsls)
     local s = table.concat(epsls, "\n")
     return ([[
 %!PS-Adobe-3.0 EPSF-3.0
-%%BoundingBox: ]]..bbox..[[
-
+%%BoundingBox: 0 -208 1024 816
 %%EndComments
 gsave
 ]]..s..[[
@@ -199,11 +222,16 @@ grestore
   end
   function M.svg_to_eps(svgsrc)
     local src = svgsrc:gsub("%s+", " "):gsub(" $", "")
-    if src:sub(1, #prologue) == prologue
-        and src:sub(-#epilogue) == epilogue then
-      src = src:sub(#prologue + 1, -#epilogue - 1)
-      src = form_eps(bbox, parse_path(src))
-      return src
+    src = unenclose(src, prologue, epilogue)
+    if not src then return end
+    local t = unenclose(src, '<path d="', '" />')
+    if t then -- SVG uses path elements
+      t = parse_path(t)
+    else      -- SVG uses polygon elements
+      t = parse_polygon(src)
+    end
+    if t then
+      return form_eps(t)
     end
   end
 end
