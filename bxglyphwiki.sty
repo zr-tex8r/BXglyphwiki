@@ -2,7 +2,7 @@
 
 %% package declaration
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesPackage{bxglyphwiki}[2015/05/06 v0.3a]
+\ProvidesPackage{bxglyphwiki}[2015/07/30 v0.3b]
 %
 \def\bxgw@pkgname{bxglyphwiki}
 \def\bxgw@error{\PackageError\bxgw@pkgname}
@@ -275,23 +275,37 @@
   \bxgw@use@bbtrue
 \fi
 
+%% \bxgw@ytzw
+\def\bxgw@ytzw#1#2{%
+  \ifbxgw@tdir#2\else#1\fi \bxgw@zw
+}
+
+
+%% \bxgw@cht / \bxgw@cdp
+\def\bxgw@cht{\bxgw@htdp\cht{0.88}{0.5}}
+\def\bxgw@cdp{\bxgw@htdp\cdp{0.12}{0.5}}
+\def\bxgw@htdp#1#2#3{%
+  \ifx#1\@defined
+    \ifbxgw@ytzw{#2}{#3}%
+  \else #1%
+  \fi
+}
+
 %% \bxgw@use@img{<filename>}
 % Places a glyph image as if it were a kanji.
 \def\bxgw@use@img#1{%
   \def\bxgw@img@file{#1}%
-  \ifbxgw@tdir
-    \@tempdima\bxgw@tadj\bxgw@zw
-    \advance\@tempdima-0.5\bxgw@zw
-  \else
-    \@tempdima\bxgw@yadj\bxgw@zw
-    \advance\@tempdima-0.12\bxgw@zw
+  \@tempdima\bxgw@ytzw{\bxgw@yadj}{\bxgw@tadj}%
+  \advance\@tempdima\bxgw@ytzw{-0.12}{-0.5}%
+  \ifx\adjustbaseline\@undefined\else
+    \adjustbaseline
   \fi
   \edef\bxgw@vertadj{\the\@tempdima}%
   \edef\bxgw@next{\bxgw@img@args}%
   \bxgw@next
 }
 \def\bxgw@img@args{%
-  \noexpand\raisebox{\bxgw@vertadj}%
+  \noexpand\raisebox{\bxgw@vertadj}[\bxgw@cht][\bxgw@cdp]%
   {\noexpand\makebox[\bxgw@zw][c]{%
     \ifbxgw@tdir\noexpand\rotatebox[origin=c]{90}\fi{%
     \noexpand\includegraphics
@@ -311,10 +325,14 @@
 % Prints a character as fallback; it is rendered with double
 % thick underlines beneath.
 \def\bxgw@fallback#1{%
-  \raisebox{\z@}[.88\bxgw@zw][.12\bxgw@zw]{%
+  \ifx\adjustbaseline\@undefined\else
+    \adjustbaseline
+  \fi
+  \raisebox{\z@}[\bxgw@cht][\bxgw@cdp]{%
     \makebox[\bxgw@zw]{#1}\kern-\bxgw@zw
-    \rule[-.15\bxgw@zw]{\bxgw@zw}{.05\bxgw@zw}\kern-\bxgw@zw
-    \rule[-.25\bxgw@zw]{\bxgw@zw}{.05\bxgw@zw}}%
+    \rule[\bxgw@ytzw{-.15}{-.53}]{\bxgw@zw}{.05\bxgw@zw}%
+    \kern-\bxgw@zw
+    \rule[\bxgw@ytzw{-.25}{-.63}]{\bxgw@zw}{.05\bxgw@zw}}%
 }
 
 %--------------------------------------- user command
