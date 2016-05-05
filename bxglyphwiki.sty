@@ -2,7 +2,7 @@
 
 %% package declaration
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesPackage{bxglyphwiki}[2016/02/14 v0.4]
+\ProvidesPackage{bxglyphwiki}[2016/05/05 v0.4]
 %
 \def\bxgw@pkgname{bxglyphwiki}
 \def\bxgw@error{\PackageError\bxgw@pkgname}
@@ -40,13 +40,9 @@
 \fi\fi\fi
 \ifbxgw@ok\else\expandafter\endinput\fi\relax
 
-%% \ifbxgw@tdir
-\let\ifbxgw@tdir\iftdir
-\begingroup\expandafter\expandafter\expandafter\endgroup
-\expandafter\ifx\csname iftdir\endcsname\relax
-  \expandafter\@firstofone
-\else\expandafter\@gobble
-\fi{\let\ifbxgw@tdir\iffalse}
+%% \bxgw@ifvertdir@ptex
+\@onlypreamble\bxgw@ifvertdir@ptex
+\def\bxgw@ifvertdir@ptex{\bxgw@cond\iftdir\fi}
 
 %--------------------------------------- configuration interface
 % The commands here will be used in the config file.
@@ -234,6 +230,27 @@
   \fi
 }
 
+%% \bxgw@repeatable@hook
+\@onlypreamble\bxgw@repeatable@hook
+\let\bxgw@repeatable@hook\@empty
+\AtBeginDocument{\bxgw@repeatable@hook}
+\AtEndOfPackage{\bxgw@repeatable@hook}
+
+%% \bxgw@ifvertdir{<true>}{<false>}
+% Tests if the current writing direction is vertical.
+\ifbxgw@ptex
+  \let\bxgw@ifvertdir\bxgw@ifvertdir@ptex
+\else
+  \let\bxgw@ifvertdir\@secondoftwo % always false
+\fi
+\g@addto@macro\bxgw@repeatable@hook{%
+  \@ifpackageloaded{luatexja}{%
+    \chardef\bxgw@luatexja@tate=3
+    \def\bxgw@ifvertdir{\bxgw@cond
+      \ifnum\ltjgetparameter{direction}=\bxgw@luatexja@tate\fi}%
+  }{}%
+}
+
 %% \bxgw@nunc : current timestamp
 %% \bxgw@tunc : cache limit timestamp
 \begingroup
@@ -311,7 +328,7 @@
 
 %% \bxgw@ytzw
 \def\bxgw@ytzw#1#2{%
-  \ifbxgw@tdir#2\else#1\fi \bxgw@zw
+  \bxgw@ifvertdir{#2}{#1}\bxgw@zw
 }
 
 %% \bxgw@cht / \bxgw@cdp
@@ -340,7 +357,7 @@
 \def\bxgw@img@args{%
   \noexpand\raisebox{\bxgw@vertadj}[\bxgw@cht][\bxgw@cdp]%
   {\noexpand\makebox[\bxgw@zw][c]{%
-    \ifbxgw@tdir\noexpand\rotatebox[origin=c]{90}\fi{%
+    \bxgw@ifvertdir{\noexpand\rotatebox[origin=c]{90}}{}{%
     \noexpand\includegraphics
       [width=\bxgw@scl\bxgw@zw
       ,height=\bxgw@scl\bxgw@zw
