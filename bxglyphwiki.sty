@@ -3,11 +3,7 @@
 %% package declaration
 \NeedsTeXFormat{LaTeX2e}
 \ProvidesPackage{bxglyphwiki}[2016/05/05 v0.4]
-%
 \def\bxgw@pkgname{bxglyphwiki}
-\def\bxgw@error{\PackageError\bxgw@pkgname}
-\def\bxgw@warn{\PackageWarning\bxgw@pkgname}
-\def\bxgw@info{\PackageInfo\bxgw@pkgname}
 
 %% switches
 \newif\ifbxgw@ok
@@ -96,7 +92,8 @@
   \ifx\bxgw@end#1\bxgw@end
     \edef\bxgw@cache{\the\@tempcnta}%
   \else
-    \bxgw@error{Illegal number format}\@ehc
+    \PackageError\bxgw@pkgname
+     {Illegal number format}\@eha
   \fi
 }
 
@@ -125,9 +122,9 @@
 \DeclareOption{nointernallua}{\bxgw@internalluafalse}
 %% handling keyval options
 \DeclareOption*{%
-  \expandafter\bxgw@setkeys\expandafter{\CurrentOption}%
+  \def\bxgw@next{\setkeys{bxgw}}%
+  \expandafter\bxgw@next\expandafter{\CurrentOption}%
 }
-\def\bxgw@setkeys{\setkeys{bxgw}}
 %% dir option
 \define@key{bxgw}{dir}{%
   \g@addto@macro\bxgw@opt@post{\setgwworkdir{#1}}%
@@ -226,7 +223,8 @@
   \ifx\bxgw@end#1\bxgw@end
     \bxgw@next
   \else
-    \bxgw@error{Illegal number format}\@ehc
+    \PackageError\bxgw@pkgname
+     {Illegal number format}\@eha
   \fi
 }
 
@@ -275,7 +273,8 @@
   \advance\@tempcnta-\bxgw@cache
   \ifnum\@tempcnta<\z@ \@tempcnta\z@ \fi
   \xdef\bxgw@tunc{\the\@tempcnta}%
-  \bxgw@info{current time = \bxgw@nunc}%
+  \PackageInfo\bxgw@pkgname
+   {current time = \bxgw@nunc\@gobble}%
 \endgroup
 
 %--------------------------------------- internallua availability
@@ -516,8 +515,9 @@
   \global\expandafter\let\csname
    bxgw@rel/\bxgw@glyph\endcsname\bxgw@rel
   \ifnum\bxgw@rev>\bxgw@latest\relax
-    \bxgw@warn{The requested version (\bxgw@rev) is not yet present%
-    \MessageBreak ('\bxgw@glyph', latest=\bxgw@latest)}%
+    \PackageWarning\bxgw@pkgname
+     {The requested version (\bxgw@rev) is not yet present%
+      \MessageBreak ('\bxgw@glyph', latest=\bxgw@latest),}%
     \let\bxgw@rev\bxgw@latest
   \fi
 }
@@ -536,8 +536,8 @@
   \let\do\bxgw@read@info@a
   \InputIfFileExists{\bxgw@info@file}{}{}%
   \bxgw@cond\ifx\bxgw@latest\relax\fi{%
-    \bxgw@error
-    {Glyph '\bxgw@glyph' is not available}\@ehc
+    \PackageError\bxgw@pkgname
+     {Glyph '\bxgw@glyph' is not available}\@ehd
     \bxgw@abort
   }{}%
 }
@@ -562,9 +562,10 @@
   \or % +
     \ifbxgw@ok\else \let\bxgw@rrev\bxgw@latest \fi
   \fi
-  \bxgw@info{Using ver.\bxgw@rrev\space for '\bxgw@glyph'
+  \PackageInfo\bxgw@pkgname
+   {Using ver.\bxgw@rrev\space for '\bxgw@glyph'
     (latest=\bxgw@latest),\MessageBreak
-    \ifbxgw@ok without\else with\fi\space download}%
+    \ifbxgw@ok without\else with\fi\space download,}%
   \let\rev\bxgw@org@rev
 }
 \def\bxgw@resolve@sing#1#2{%
@@ -590,8 +591,8 @@
   \IfFileExists{\bxgw@glyph@file}{%
     \bxgw@use@img{\bxgw@glyph@file}%
   }{%else
-    \bxgw@error
-    {Glyph image of '\bxgw@glyph'(\bxgw@rev) is not found}\@ehc
+    \PackageError\bxgw@pkgname
+     {Glyph image of '\bxgw@glyph'(\bxgw@rev) is not found}\@ehd
     \bxgw@abort
   }%
 }
@@ -652,7 +653,8 @@
    \bxgw@drv\space #2}%
   \bxgw@read@response
   \ifx\bxgw@resp\@empty
-    \bxgw@error{Helper command failed for some reason}\@ehc
+    \PackageError\bxgw@pkgname
+     {Helper command failed for some reason}\@ehd
   \fi
 }
 
@@ -674,13 +676,20 @@
     \bxgw@spawn{ping}{\bxgw@token}%
     \bxgw@read@response
     \ifx\bxgw@token\bxgw@resp
-      \bxgw@info{PING success}%
+      \PackageInfo\bxgw@pkgname
+       {PING success\@gobble}%
     \else
-      \bxgw@error{PING failed, download aborted}\@ehc
+      \PackageError\bxgw@pkgname
+       {PING failure, download aborted}%
+       {Run your LaTeX command with -shell-escape option to download
+        images.\MessageBreak\@ehc}%
       \chardef\bxgw@download\z@
     \fi
   \else
-    \bxgw@error{Shell is disabled, download aborted}\@ehc
+    \PackageError\bxgw@pkgname
+     {Shell is disabled, download aborted}%
+     {Run your LaTeX command with -shell-escape option to download
+      images.\MessageBreak\@ehc}%
     \chardef\bxgw@download\z@
   \fi
 }
@@ -706,7 +715,8 @@
       \bxgw@drv\space #2"))
   }}}%
   \ifx\bxgw@resp\@empty
-    \bxgw@error{Helper command failed for some reason}\@ehc
+    \PackageError\bxgw@pkgname
+     {Helper command failed for some reason}\@ehd
   \fi
 }
 
@@ -714,9 +724,13 @@
 \def\bxgw@exec@ping{%
   \bxgw@spawn{ping}{int}%
   \unless\ifx\bxgw@resp\@empty
-    \bxgw@info{PING success}%
+    \PackageInfo\bxgw@pkgname
+     {PING success\@gobble}%
   \else
-    \bxgw@error{PING failed, download aborted}\@ehc
+    \PackageError\bxgw@pkgname
+     {PING failure, download aborted}%
+     {Run your LaTeX command with -shell-restricted (or -shell-escape)
+      option\MessageBreak to download images.\MessageBreak\@ehc}%
     \chardef\bxgw@download\z@
   \fi
 }
@@ -733,8 +747,10 @@
 \def\bxgw@next#1#2{%
   \ifbxgw@ok
     \bxgw@validate@var#1\ifbxgw@ok\else
-      \bxgw@error{#2 '#1' is illegal}%
-       {The package will fail to work.}%
+      \PackageError\bxgw@pkgname
+       {#2 '#1' is illegal}%
+       {Some of the setting has an illegal value.\MessageBreak
+        The package will not work at all.\MessageBreak\@ehc}%
       \bxgw@annihilate
     \fi
   \fi
