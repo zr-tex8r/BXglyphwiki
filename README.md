@@ -10,11 +10,12 @@ LaTeX: 「グリフウィキ」に登録された文字を利用する
 
 ### 前提環境
 
-  - フォーマット： LaTeX
-  - エンジン： pTeX ／ upTeX ／ XeTeX ／ LuaTeX
-  - DVIウェア： dvips ／ dvipdfmx ／ pdfTeX
+  - TeX 処理系： pLaTeX、upLaTeX、XeLaTeX、LuaLaTeX
+  - DVI ウェア（DVI 出力時）： dvips、dvipdfmx
   - LuaTeX エンジンを Lua インタプリタとして使用するのでインストール
     されている必要がある。
+  - 前提パッケージ：
+      * pdftexcmds、ifluatex、ifxetex
   - インターネットへのアクセス ;-)
 
 ### インストール
@@ -55,12 +56,16 @@ bxglyphwiki パッケージ
 
 パッケージオプション：
 
-  - ドライバ指定： `dvips`、`dvipdfmx`、`pdftex`、`xetex` の何れか。
-    （graphicx のドライバと同じにする。）
+  - ドライバ指定： `dvips`、`dvipdfmx`、`pdftex`、`xetex`、`luatex`
+    の何れか。（graphicx のドライバと同じにする。）
   - `download` （既定）： 「グリフウィキ」サイトからのダウンロードを
     行う。
   - `nodownload` ： ダウンロードを一切行わない。（既にダウンロードされた
     キャッシュファイルのみを使用する。）
+  - `internallua` ： “internallua”モード（後述）を有効にする。
+  - `nointernallua` ： “internallua”モードを無効にする。
+      * LuaLaTeX では `internallua` が、それ以外では `nointernallua` が
+        既定値である。
   - `dir=<ディレクトリ名>` ： キャッシュファイルを置くディレクトリ。
     既定値は `.`（カレントディレクトリ）。
   - `cache=<数値>` ： キャッシュファイルの有効期限（分単位）。既定値は
@@ -75,6 +80,13 @@ bxglyphwiki パッケージ
 有効にする（コマンドラインで `-shell-escape` オプションを指定する）必要が
 ある。シェル呼出機能が無効である場合は自動的に `nodownload` オプション
 指定時の動作にフォールバックする。
+
+ただし、エンジンが LuaLaTeX の場合は、“internallua”モードが利用できる。
+このモードでは Lua スクリプトを LuaTeX エンジンの内部の Lua 処理系により
+実行する。新たに LuaTeX を実行しないので、無制限シェル呼出は不要となる
+が、スクリプト中で repstopdf コマンドを呼び出しているため、これの実行が
+許可されている必要がある。TeX Live の既定の設定では、`-shell-escape` は
+不要となるはずである。
 
 ### 機能
 
@@ -123,21 +135,25 @@ bxglyphwiki パッケージ
 更新履歴
 --------
 
-  * Version 0.3b [2015/07/20]
+  * Version 0.4  〈2016/05/05〉
+      - LuaTeX v0.85 以降への対応。
+      - “internallua”モードを追加。
+      - LuaTeX-ja の縦組みモードに対応。
+  * Version 0.3b 〈2015/07/20〉
       - 出力する文字の高さ・深さについて、`\cht`・`\cdp` が利用可能なら
         それに合わせるようにした。
       - README を更新。
-  * Version 0.3a [2015/05/06]
+  * Version 0.3a 〈2015/05/06〉
       - 「グリフウィキ」の一部のグリフにおいて、v0.3 で決め打ちした形式
         （単一の path 要素）とは異なる形式（polygon 要素を含む）の SVG
         画像が使用されていたので、それに対応した。
-  * Version 0.3  [2015/02/26]
+  * Version 0.3  〈2015/02/26〉
       - 「グリフウィキ」の EPS 画像出力機能が廃止になったので、SVG 画像
         をダウンロードしてそれを（一旦）EPS に変換する方式に変更した。
         SVG→EPS の変換ロジックはグリフウィキの出力するファイルに特化
         したものとなっている。
       - `\setgwscale`、`\setgwyvertadjust`、`setgwtvertadjust` を新設。
-  * Version 0.2  [2013/10/16]
+  * Version 0.2  〈2013/10/16〉
       - 最初の公開版
 
 --------------------
