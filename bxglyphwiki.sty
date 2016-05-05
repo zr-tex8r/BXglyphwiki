@@ -2,7 +2,7 @@
 
 %% package declaration
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesPackage{bxglyphwiki}[2015/07/30 v0.3b]
+\ProvidesPackage{bxglyphwiki}[2016/02/14 v0.4]
 %
 \def\bxgw@pkgname{bxglyphwiki}
 \def\bxgw@error{\PackageError\bxgw@pkgname}
@@ -14,6 +14,7 @@
 \newif\ifbxgw@unicode
 \newif\ifbxgw@ptex
 \newif\ifbxgw@use@bb
+\newif\ifbxgw@internallua
 
 %% packages
 \RequirePackage{pdftexcmds}[2009/09/23]% v0.6
@@ -26,6 +27,7 @@
 \bxgw@oktrue
 \ifluatex
   \bxgw@unicodetrue
+  \bxgw@internalluatrue
 \else\ifxetex
   \bxgw@unicodetrue
 \else\ifbxgw@ptex
@@ -123,6 +125,8 @@
 \DeclareOption{download}{\chardef\bxgw@download\@ne}
 \DeclareOption{nodownload}{\chardef\bxgw@download\z@}
 %\DeclareOption{forcedownload}{\chardef\bxgw@download\tw@}
+\DeclareOption{internallua}{\bxgw@internalluatrue}
+\DeclareOption{nointernallua}{\bxgw@internalluafalse}
 %% handling keyval options
 \DeclareOption*{%
   \expandafter\bxgw@setkeys\expandafter{\CurrentOption}%
@@ -256,6 +260,36 @@
   \xdef\bxgw@tunc{\the\@tempcnta}%
   \bxgw@info{current time = \bxgw@nunc}%
 \endgroup
+
+%--------------------------------------- internallua availability
+
+%% check if 'internallua' is available
+\ifbxgw@internallua
+  \ifluatex
+    \chardef\bxgw@tmpa=\directlua{
+      tex.write(pcall(function()
+        local chunk = assert(loadfile(assert(
+            kpse.find_file("\bxgw@pkgname.lua", "lua", true))))
+        bxglyphwiki = {}
+        chunk()
+      end) and "1" or "0")
+    }
+    \ifnum\bxgw@tmpa>\z@
+      \PackageInfo\bxgw@pkgname
+       {Entered 'internallua' mode\@gobble}
+    \else
+      \PackageWarning\bxgw@pkgname
+       {Set-up for 'internallua' mode failed,\MessageBreak
+        falling back to 'nointernallua' mode\@gobble}
+      \bxgw@internalluafalse
+    \fi
+  \else
+    \PackageWarning\bxgw@pkgname
+     {You can use 'internallua' only on LuaTeX,\MessageBreak
+      falling back to 'nointernallua' mode\@gobble}
+    \bxgw@internalluafalse
+  \fi
+\fi
 
 %--------------------------------------- glyph output
 
@@ -644,6 +678,37 @@
   \bxgw@spawn{get}{\bxgw@glyph\space\bxgw@rev}%
 }
 
+%--------------------------------------- directlua mode
+\ifbxgw@internallua
+
+%% \bxgw@spawn{<command>}{<arg>...}
+\def\bxgw@spawn#1#2{%
+  \edef\bxgw@resp{\unexpanded\expandafter{\directlua{
+    tex.sprint(bxglyphwiki.spawn("#1\space
+      \bxgw@wdir\space \bxgw@img@fmt\space
+      \bxgw@drv\space #2"))
+  }}}%
+  \ifx\bxgw@resp\@empty
+    \bxgw@error{Helper command failed for some reason}\@ehc
+  \fi
+}
+
+%% \bxgw@exec@ping
+\def\bxgw@exec@ping{%
+  \bxgw@spawn{ping}{int}%
+  \unless\ifx\bxgw@resp\@empty
+    \bxgw@info{PING success}%
+  \else
+    \bxgw@error{PING failed, download aborted}\@ehc
+    \chardef\bxgw@download\z@
+  \fi
+}
+
+%% \bxgw@read@response
+\let\bxgw@read@response\relax
+\let\bxgw@read@response@a\relax
+
+\fi
 %--------------------------------------- start up
 
 %% validate static parameters

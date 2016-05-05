@@ -9,11 +9,11 @@ end
 local M = bxglyphwiki
 ---------------------------------------- interfaces
 M.prog_name = "bxglyphwiki"
-M.version = "0.3b"
-M.mod_date = "2015/07/20"
+M.version = "0.4"
+M.mod_date = "2016/02/14"
 M.url_json = "http://glyphwiki.org/json?name=%s"
 M.url_svg = "http://glyphwiki.org/glyph/%s@%d.svg"
-M.epstopdf = "epstopdf"
+M.epstopdf = "repstopdf"
 M.extractbb = "extractbb"
 do
   M.prefix = "bxgw_"
@@ -27,7 +27,9 @@ do
   function M.abort(...)
     M.info(...)
     M.message("")
-    os.exit(-1)
+    if M.internal then error()
+    else os.exit(-1)
+    end
   end
   function M.sure(value, arg1, ...)
     if value then return value end
@@ -37,7 +39,9 @@ do
     M.abort(arg1, ...)
   end
   function M.message(str)
-    if M.wdir then
+    if M.internal then
+      M.msg = tostring(str)
+    elseif M.wdir then
       local fname = M.ppfx..M.resp_file
       local hmsg = io.open(fname, "wb")
       if hmsg then
@@ -271,9 +275,16 @@ do
 end
 ---------------------------------------- core procedures
 do
-  function M.do_ping(id)
-    M.sure(id, "id missing")
-    M.message(id)
+  if M.internal then
+    function M.do_ping(id)
+      M.sure(os.execute() > 0, "os.execute is disabled")
+      M.message("OK")
+    end
+  else
+    function M.do_ping(id)
+      M.sure(id, "id missing")
+      M.message(id)
+    end
   end
   local dum = "\233\150\162\233\128\163\229\173\151"
   function M.do_info(glyph)
@@ -320,7 +331,14 @@ do
   end
 end
 ---------------------------------------- bootstrap
-if not M.internal then
+if M.internal then
+  function M.spawn(argstr)
+    local arg = (argstr or ""):explode()
+    local ok = pcall(M.main, (table.unpack or unpack)(arg))
+    if not ok then M.msg = "" end
+    return (M.msg or "")
+  end
+else
 -- bxglyphwiki +ping <wdir> <format> <driver> <id>
 -- bxglyphwiki +info <wdir> <format> <driver> <glyph>
 -- bxglyphwiki +get <wdir> <format> <driver> <glyph> <rev>
