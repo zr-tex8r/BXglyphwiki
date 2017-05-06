@@ -2,7 +2,7 @@
 
 %% package declaration
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesPackage{bxglyphwiki}[2016/05/05 v0.4]
+\ProvidesPackage{bxglyphwiki}[2017/05/05 v0.4a-pre]
 \def\bxgw@pkgname{bxglyphwiki}
 
 %% switches
@@ -14,7 +14,7 @@
 
 %% packages
 \RequirePackage{pdftexcmds}[2009/09/23]% v0.6
-\RequirePackage{ifluatex,ifxetex}
+\RequirePackage{ifluatex,ifxetex,ifpdf}
 
 %--------------------------------------- environment check
 
@@ -151,6 +151,17 @@
 }{}
 
 %% driver adjustment
+\ifxetex
+  \ExecuteOptions{xetex}%
+\else\ifluatex
+  \ifpdf
+    \IfFileExists{luatex.def}{%
+      \ExecuteOptions{luatex}%
+    }{%
+      \ExecuteOptions{pdftex}%
+    }%
+  \fi
+\fi\fi
 \@ifpackageloaded{graphics}{%
   \def\bxgw@next#1.def#2\bxgw@end{%
     \ExecuteOptions{#1}}%
@@ -167,9 +178,19 @@
   \RequirePackage{graphicx}%
 }{%else
   \ifx\bxgw@drv\bxgw@hyph\else
+    \PackageInfo\bxgw@pkgname
+     {Auto-load graphicx with driver '\bxgw@drv'}%
     \edef\bxgw@next{[\bxgw@drv]{graphicx}}%
     \expandafter\RequirePackage\bxgw@next
   \fi
+  \AtBeginDocument{%
+    \ifx\includegraphics\@undefined
+      \PackageError\bxgw@pkgname
+       {The graphics package is not auto-loaded because\MessageBreak
+        the driver is unknown, and the package is not\MessageBreak
+        manually loaded either}%
+       {\@ehc}%
+    \fi}%
 }
 
 %--------------------------------------- helpers
@@ -582,6 +603,7 @@
 
 %% \bxgw@put@glyph
 \def\bxgw@put@glyph{%
+  \bxgw@cond\ifx\includegraphics\@undefined\fi{\bxgw@abort}{}%
   \bxgw@cond\ifbxgw@ok\fi{}{%else
     \bxgw@exec@get
     \bxgw@cond\ifx\bxgw@resp\@empty\fi{\bxgw@abort}{}%
