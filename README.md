@@ -135,6 +135,9 @@ bxglyphwiki パッケージ
 更新履歴
 --------
 
+  * Version 0.4a 〈2017/05/07〉
+      - XeTeX／LuaTeX ではドライバを自動推定する。
+      - 縦組時の処理を改良。
   * Version 0.4  〈2016/05/05〉
       - LuaTeX v0.85 以降への対応。
       - “internallua”モードを追加。
