@@ -119,7 +119,7 @@ do
     infoh:write(("\\do{%s}{%%\n"):format(info.latest))
     for r = info.latest, 1, -1 do
       if info[r] then 
-        infoh:write(("\\rev{%s}{%s}%%\n"):format(r, info[r]))
+        infoh:write(("\\rev{%d}{%d}%%\n"):format(r, info[r]))
       end
     end
     infoh:write("}%\n")
