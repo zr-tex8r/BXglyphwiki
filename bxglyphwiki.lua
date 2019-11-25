@@ -46,6 +46,9 @@ do
       local hmsg = io.open(fname, "wb")
       if hmsg then
         local msg = "\\do{"..str.."}%\n"
+        if msg:match("[\128-\255]") then
+          msg = "\239\187\191"..msg -- prepend BOM
+        end
         hmsg:write(msg)
         hmsg:close()
       else
