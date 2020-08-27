@@ -305,6 +305,9 @@
 %% check if 'internallua' is available
 \ifbxgw@internallua
   \ifluatex
+    \IfFileExists{luapackageloader.sty}{%
+      \RequirePackage{luapackageloader}[2017/05/26]% v0.1
+    }{}
     \chardef\bxgw@tmpa=\directlua{
       tex.write(pcall(function()
         local chunk = assert(loadfile(assert(

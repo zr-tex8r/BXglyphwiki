@@ -64,7 +64,6 @@ do
     return math.floor(a / b)
   end
   -- downloader
-  local http = require("socket.http")
   function M.http_get(url, sal)
     local resp = zrget.download(url, nil, function(data)
       return data:sub(1, #sal) == sal
@@ -72,6 +71,16 @@ do
     M.sure(resp, "download failure")
     return resp
   end
+  pcall(function()
+    local https = require("ssl.https")
+    M.info("'https' module available")
+    -- make use of https if available
+    function M.http_get(url)
+      local resp, status = https.request(url)
+      M.sure(resp and status == 200, "download failure")
+      return resp
+    end
+  end)
   -- timestamp
   local MEP = 74223360
   local tmep = os.time({ year=2000, month=1, day=1, hour=0 })
