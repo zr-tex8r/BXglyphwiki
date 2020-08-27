@@ -17,6 +17,11 @@ LaTeX: 「グリフウィキ」に登録された文字を利用する
   - 前提パッケージ：
       * pdftexcmds、ifluatex、ifxetex
   - インターネットへのアクセス ;-)
+  - HTTPS 接続のため、以下の **何れか** が必要
+      - curl コマンド (SSL 対応のもの)
+      - wget コマンド (SSL 対応のもの)
+      - Windows の PowerShell
+      - Lua の LuaSec モジュール
 
 ### インストール
 
@@ -37,15 +42,16 @@ LaTeX: 「グリフウィキ」に登録された文字を利用する
       - それを実行パスの通ったディレクトリに置く。
       - `bxglyphwiki.lua` を `$TEXMF/scripts/BXglyphwiki` に移動する。
 
-  * W32TeX の場合： 
-      - `$TEXMFBIN/runscr.exe` を `bxglyphwiki.exe` の名前でコピーする。
-      - それを `$TEXMFBIN` （または、それと同階層にある、実行パスの
-        通ったディレクトリ）に置く。
-      - `bxglyphwiki.lua` を `$TEXMF/scripts/BXglyphwiki` に移動する。
-        （`bxglyphwiki.exe` と同じディレクトリでもよい。）
-
 上述の説明が実行できない場合は、回避策として、`bxglyphwiki.lua` を
 カレントディレクトリ（文書ファイルがある場所）に置いても動作する。
+
+#### W32TeX の場合
+
+現在の W32TeX は BXglyphwiki を含んでいる。インストールに以下のアーカイブ
+を含めると BXglyphwiki が使用できる。
+
+  - cjkzr.tar.xz
+  - luasec-w32.tar.xz
 
 bxglyphwiki パッケージ
 ----------------------
@@ -62,7 +68,8 @@ bxglyphwiki パッケージ
     行う。
   - `nodownload` ： ダウンロードを一切行わない。（既にダウンロードされた
     キャッシュファイルのみを使用する。）
-  - `internallua` ： “internallua”モード（後述）を有効にする。
+  - `internallua` ： “internallua”モードを有効にする。Lua スクリプトを
+    LuaTeX の内部の Lua 呼出により実行する。
   - `nointernallua` ： “internallua”モードを無効にする。
       * LuaLaTeX では `internallua` が、それ以外では `nointernallua` が
         既定値である。
@@ -81,12 +88,10 @@ bxglyphwiki パッケージ
 ある。シェル呼出機能が無効である場合は自動的に `nodownload` オプション
 指定時の動作にフォールバックする。
 
-ただし、エンジンが LuaLaTeX の場合は、“internallua”モードが利用できる。
-このモードでは Lua スクリプトを LuaTeX エンジンの内部の Lua 処理系により
-実行する。新たに LuaTeX を実行しないので、無制限シェル呼出は不要となる
-が、スクリプト中で repstopdf コマンドを呼び出しているため、これの実行が
-許可されている必要がある。TeX Live の既定の設定では、`-shell-escape` は
-不要となるはずである。
+※以前の版では、“internallua”モードでの動作には制限付シェル呼出しか必要
+とせず `-shell-escape` は不要であった。しかし現在では HTTPS 接続のために
+外部コマンド呼出（か外部ライブラリ読込の何れか）が要求されるため、LuaTeX
+においても `-shell-escape` が必要である。
 
 ### 機能
 
@@ -135,6 +140,8 @@ bxglyphwiki パッケージ
 更新履歴
 --------
 
+  * Version 0.5  〈2020/08/28〉
+      - 「グリフウィキ」の API の仕様の変更に伴い HTTPS 接続に対応させた。
   * Version 0.4c 〈2019/11/26〉
       - 入力漢字コードの自動判別の誤判定への対処。
   * Version 0.4b 〈2019/11/24〉
@@ -165,4 +172,4 @@ bxglyphwiki パッケージ
 
 --------------------
 Takayuki YATO (aka. "ZR")  
-http://zrbabbler.sp.land.to/
+https://github.com/zr-tex8r
