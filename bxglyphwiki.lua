@@ -11,8 +11,8 @@ local M = bxglyphwiki
 M.prog_name = "bxglyphwiki"
 M.version = "0.6-pre"
 M.mod_date = "2020/09/01"
-M.url_json = "http://glyphwiki.org/json?name=%s"
-M.url_svg = "http://glyphwiki.org/glyph/%s@%d.svg"
+M.url_json = "http://non-ssl.glyphwiki.org/json?name=%s"
+M.url_svg = "http://non-ssl.glyphwiki.org/glyph/%s@%d.svg"
 M.epstopdf = "repstopdf"
 M.extractbb = "extractbb"
 do
