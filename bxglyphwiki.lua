@@ -9,10 +9,10 @@ end
 local M = bxglyphwiki
 ---------------------------------------- interfaces
 M.prog_name = "bxglyphwiki"
-M.version = "0.5"
-M.mod_date = "2020/08/28"
-M.url_json = "https://glyphwiki.org/json?name=%s"
-M.url_svg = "https://glyphwiki.org/glyph/%s@%d.svg"
+M.version = "0.6-pre"
+M.mod_date = "2020/09/01"
+M.url_json = "http://glyphwiki.org/json?name=%s"
+M.url_svg = "http://glyphwiki.org/glyph/%s@%d.svg"
 M.epstopdf = "repstopdf"
 M.extractbb = "extractbb"
 do
@@ -64,23 +64,14 @@ do
     return math.floor(a / b)
   end
   -- downloader
-  function M.http_get(url, sal)
-    local resp = zrget.download(url, nil, function(data)
-      return data:sub(1, #sal) == sal
-    end)
-    M.sure(resp, "download failure")
+  local http = require("socket.http")
+  function M.http_get(url)
+    --local cached = http_cache[url]
+    --if cached then return cached end
+    local resp, status = http.request(url)
+    M.sure(resp and status == 200, "download failure")
     return resp
   end
-  pcall(function()
-    local https = require("ssl.https")
-    M.info("'https' module available")
-    -- make use of https if available
-    function M.http_get(url)
-      local resp, status = https.request(url)
-      M.sure(resp and status == 200, "download failure")
-      return resp
-    end
-  end)
   -- timestamp
   local MEP = 74223360
   local tmep = os.time({ year=2000, month=1, day=1, hour=0 })
@@ -301,7 +292,7 @@ do
   local dum = "\233\150\162\233\128\163\229\173\151"
   function M.do_info(glyph)
     local info = M.read_info(glyph)
-    local json = M.http_get(M.url_json:format(glyph), '{')
+    local json = M.http_get(M.url_json:format(glyph))
     local latest, rel = M.read_json(json)
     if latest > 0 then
       info.latest = latest
@@ -313,7 +304,7 @@ do
     rev = M.sure(tonumber(rev), "bad number format", rev)
     local info = M.read_info(glyph)
     local fbase = M.glyph_fbase:format(glyph, rev)
-    local svg = M.http_get(M.url_svg:format(glyph, rev), '<svg')
+    local svg = M.http_get(M.url_svg:format(glyph, rev))
     M.write_glyph(svg, fbase)
     info[rev] = M.timestamp()
     M.write_info(glyph, info)
@@ -342,175 +333,6 @@ do
     return (M.driver == "dvipdfmx" and M.format == "pdf")
   end
 end
----------------------------------------- new downloader
---//////// 'zrget' module ////////
-zrget = (function(M)
-  -- parameters
-  M.max_trial = M.max_trial  or 3
-  M.interval  = M.interval   or 1 -- second
-  M.log       = M.log        or true
-
-  -- helpers
-  local lfs = require 'lfs'
-  local socket = require 'socket'
-  local tempb = '__zrget'
-  local win = (lfs.attributes('C:\\NUL', 'mode') ~= nil)
-  local function upath(pth)
-    return (win) and pth:gsub('\\', '/') or pth
-  end
-  local function npath(pth)
-    return (win) and pth:gsub('/', '\\') or pth
-  end
-  local function log_print(s)
-    io.stderr:write("zrget: ", s, "\n")
-  end
-  local function log(fmt, ...)
-    if not M.log then return end
-    local l = (type(M.log) == 'function') and M.log or log_print
-    l(tostring(fmt):format(...))
-  end
-  local function file_ok(pth)
-    return ((lfs.attributes(pth, 'size') or 0) > 0)
-  end
-  local function execute(clfmt, ...)
-    local cl = clfmt:format(...)
-    if M.verbose then log("RUN: %s", cl) end
-    local ok = os.execute(cl)
-    return (ok == true) or (ok == 0)
-  end
-  local function exefile(pth)
-    pth = npath(pth..(win and '.exe' or ''))
-    return (file_ok(pth) or nil) and pth
-  end
-  local function validate(vprc, pth)
-    if not file_ok(pth) then return false end
-    local h = io.open(pth, 'rb')
-    local d = h and h:read('*a')
-    if h then h:close() end
-    local r = d and (not vprc or vprc(d))
-    if not r then log("Validation failure") end
-    return r and d
-  end
-
-  -- TeXLive stuffs
-  local kpse
-  pcall(function()
-    kpse = require 'kpse'
-    kpse.set_program_name('luatex')
-  end)
-  local tlpkg = kpse and kpse.var_value('SELFAUTOPARENT')
-  tlpkg = tlpkg and tlpkg..'/tlpkg'
-  local tlwget = tlpkg and exefile(tlpkg..'/installer/wget/wget')
-  local tlperl = tlpkg and exefile(tlpkg..'/tlperl/bin/perl')
-
-  -- methods
-  local fcout, fcerr, ftdst =
-      tempb..'-1.out', tempb..'-2.out', tempb..'-0.bin'
-  local method_list = {
-    {
-      name = 'wget';
-      checker = 'wget --version'; check_tag = 'Wget';
-      loader = function(src)
-        return execute('wget -q --no-check-certificate "%s" -O %s 2>%s',
-            src, ftdst, fcerr)
-      end
-    },
-    {
-      name = 'curl';
-      checker = 'curl --version'; check_tag = 'curl';
-      loader = function(src)
-        return execute('curl -k -s "%s" -o %s 2>%s',
-            src, ftdst, fcerr)
-      end
-    },
-    {
-      name = 'tl-wget';
-      checker = tlwget and tlwget..' --version'; check_tag = 'Wget';
-      loader = function(src)
-        return execute('%s -q --no-check-certificate "%s" -O %s 2>%s',
-            tlwget, src, ftdst, fcerr)
-      end
-    },
-    {
-      name = 'powershell';
-      checker = 'powershell -Help'; check_tag = 'PowerShell';
-      loader = function(src)
-        return execute('powershell -Command Invoke-WebRequest '..
-            '"%s" -OutFile %s 2>%s',
-            src, ftdst, fcerr)
-      end
-    },
-    {
-      name = 'tl-perl';
-      checker = tlperl and tlperl..' --version'; check_tag = '?Perl';
-      loader = function(src)
-        return false -- TODO: make it
-      end
-    },
-  }
-
-  -- main procedure
-  function M.download(url, dst, vprc)
-    url = tostring(url):gsub('[\1-\31 \"\'<>\\`{|}]',
-      function(s) return ('%%%02X'):format(string.byte(s)) end)
-    if dst then
-      if file_ok(dst) then
-        log("File '%s' already exists", dst)
-        return false
-      end
-      os.remove(dst)
-    end
-    --
-    local data
-    for tc = 1, M.max_trial do
-      for _, mth in ipairs(method_list) do
-        repeat
-          if not mth.checker or mth.pass then break end
-          log("Try method '%s'...(%s)", mth.name, tc)
-          -- check
-          execute('%s 1>%s 2>%s', mth.checker, fcout, fcerr)
-          local hso = io.open(fcout, 'rb')
-          local p = (hso and hso:read('*a') or ''):find(mth.check_tag, 1, true)
-          hso:close()
-          if not p then
-            log("Method '%s' is not available", mth.name)
-            mth.pass = true
-            break
-          end
-          -- download
-          log("Try downloading...")
-          os.remove(ftdst)
-          if mth.loader(url) then
-            data = validate(vprc, ftdst)
-            if data then break end
-          end
-          socket.sleep(M.interval)
-          os.remove(ftdst)
-        until true
-        if data then break end
-      end
-      if data then break end
-    end
-    --
-    local what = (dst) and ("File '%s'"):format(dst) or "Data"
-    if data then
-      if dst then os.rename(ftdst, dst) end
-      log("%s is successfully downloaded", what)
-    else
-      log("%s cannot be downloaded", what)
-    end
-    --
-    for _, f in ipairs {ftdst, fcerr, fcout} do
-      os.remove(f)
-    end
-    return data
-  end
-
-  return M
-end)({})
---////////////////////////////////
-zrget.max_trial = 2
-zrget.log = M.info
 ---------------------------------------- bootstrap
 if M.internal then
   function M.spawn(argstr)

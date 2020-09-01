@@ -2,7 +2,7 @@
 
 %% package declaration
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesPackage{bxglyphwiki}[2020/08/28 v0.5]
+\ProvidesPackage{bxglyphwiki}[2020/09/01 v0.6-pre]
 \def\bxgw@pkgname{bxglyphwiki}
 
 %% switches
@@ -305,9 +305,6 @@
 %% check if 'internallua' is available
 \ifbxgw@internallua
   \ifluatex
-    \IfFileExists{luapackageloader.sty}{%
-      \RequirePackage{luapackageloader}[2017/05/26]% v0.1
-    }{}
     \chardef\bxgw@tmpa=\directlua{
       tex.write(pcall(function()
         local chunk = assert(loadfile(assert(
