@@ -68,8 +68,8 @@ do
   function M.http_get(url)
     --local cached = http_cache[url]
     --if cached then return cached end
-    local resp, status = http.request(url)
-    M.sure(resp and status == 200, "download failure")
+    local resp = zrget.download(url)
+    M.sure(resp, "download failure")
     return resp
   end
   -- timestamp
