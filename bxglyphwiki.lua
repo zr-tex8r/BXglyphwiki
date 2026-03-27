@@ -333,7 +333,171 @@ do
     return (M.driver == "dvipdfmx" and M.format == "pdf")
   end
 end
----------------------------------------- bootstrap
+--====================================== module 'zrget'
+zrget = (function(M)
+  -- parameters
+  M.max_trial = M.max_trial  or 3
+  M.interval  = M.interval   or 1 -- second
+  M.log       = M.log        or false
+
+  -- helpers
+  local lfs = require 'lfs'
+  local tempb = '__zrget'
+  local win = (lfs.attributes('C:\\NUL', 'mode') ~= nil)
+  local function npath(path)
+    return (win) and path:gsub('/', '\\') or path
+  end
+  local function mpath(...)
+    return table.concat({...}, (win) and '\\' or '/')
+  end
+  local function log(fmt, ...)
+    if type(M.log) ~= 'function' then return end
+    M.log(tostring(fmt):format(...))
+  end
+  local function file_ok(path)
+    return ((lfs.attributes(path, 'size') or 0) > 0)
+  end
+  local function execute(clfmt, ...)
+    local cline = clfmt:format(...)
+    if M.verbose then log("RUN: %s", cline) end
+    local ok = os.execute(cline)
+    return (ok == true) or (ok == 0)
+  end
+  local function exefile(path)
+    path = npath(path..(win and '.exe' or ''))
+    return (file_ok(path) or nil) and path
+  end
+  local function read_whole(path)
+    local f = io.open(path, 'rb')
+    local d = f and f:read('*a')
+    if f then f:close() end
+    return d
+  end
+  local function validate(scanner, path)
+    if not file_ok(path) then return false end
+    log("Download done")
+    local d = read_whole(path)
+    local r = d and (not scanner or scanner(d))
+    if not r then log("Validation failure") end
+    return r
+  end
+  local function prequire(name)
+    local ok, out = pcall(function() return require(name) end)
+    return ok and out
+  end
+  local sleep = os.socketsleep or (require 'socket').sleep
+
+  -- TeXLive stuffs
+  local kpse = prequire('kpse')
+  if kpse then kpse.set_program_name('luatex') end
+  local tlpkg = kpse and kpse.var_value('SELFAUTOPARENT')
+  tlpkg = tlpkg and tlpkg..'/tlpkg'
+  local tlwget = tlpkg and exefile(tlpkg..'/installer/wget/wget')
+  local tlcurl = tlpkg and exefile(tlpkg..'/installer/curl/curl')
+
+  -- methods
+  local pcout, pcerr, ptemp =
+      tempb..'-1.out', tempb..'-2.out', tempb..'-0.bin'
+  local method_list = {
+    {
+      name = 'tl-curl';
+      checker = tlcurl and tlcurl..' --version'; check_tag = 'curl';
+      loader = function(src)
+        return execute('%s -k -s "%s" -o %s 2>%s',
+            tlcurl, src, ptemp, pcerr)
+      end
+    },
+    {
+      name = 'curl';
+      checker = 'curl --version'; check_tag = 'curl';
+      loader = function(src)
+        return execute('curl -k -s "%s" -o %s 2>%s',
+            src, ptemp, pcerr)
+      end
+    },
+    {
+      name = 'powershell';
+      checker = 'powershell -Help'; check_tag = 'PowerShell';
+      loader = function(src)
+        return execute('powershell -Command Invoke-WebRequest '..
+            '"%s" -OutFile %s 2>%s',
+            src, ptemp, pcerr)
+      end
+    },
+    {
+      name = 'tl-wget';
+      checker = tlwget and tlwget..' --version'; check_tag = 'Wget';
+      loader = function(src)
+        return execute('%s -t 1 -T 3 -q --no-check-certificate "%s" -O %s 2>%s',
+            tlwget, src, ptemp, pcerr)
+      end
+    },
+    {
+      name = 'wget';
+      checker = 'wget --version'; check_tag = 'Wget';
+      loader = function(src)
+        return execute('wget -t 1 -T 3 -q --no-check-certificate "%s" -O %s 2>%s',
+            src, ptemp, pcerr)
+      end
+    },
+  }
+  local order = method_list
+
+  -- main procedure
+  function M.download(url, scanner)
+    url = tostring(url):gsub('[\1-\31 \"\'<>\\`{|}]',
+      function(s) return ('%%%02X'):format(string.byte(s)) end)
+    --
+    local done = false
+    for count = 1, M.max_trial do
+      local norder = {}
+      for _, m in ipairs(order) do
+        local rank = nil
+        repeat
+          if done then rank = #norder + 1; break end
+          if not m.checker then break end
+          log("Try method '%s'...(%s)", m.name, count)
+          -- check
+          execute('%s 1>%s 2>%s', m.checker, pcout, pcerr)
+          local f = io.open(pcout, 'rb')
+          local pos = (f and f:read('*a') or ''):find(m.check_tag, 1, true)
+          f:close()
+          if not pos then
+            log("Method '%s' is not available", m.name)
+            break
+          end
+          -- download
+          rank = #norder + 1
+          log("Try downloading...")
+          os.remove(ptemp)
+          if m.loader(url) and validate(scanner, ptemp) then
+            done, rank = true, 1; break
+          end
+          sleep(M.interval)
+          os.remove(ptemp)
+        until true
+        if rank then table.insert(norder, rank, m) end
+      end
+      order = norder
+      if done then break end
+    end
+    --
+    local result
+    if done then
+      result = read_whole(ptemp)
+      log("Downloaded succeeded", url)
+    else
+      log("Downloaded failed", url)
+    end
+    for _, p in ipairs {ptemp, pcerr, pcout} do
+      os.remove(p)
+    end
+    return result
+  end
+
+  return M
+end)({})
+--====================================== bootstrap
 if M.internal then
   function M.spawn(argstr)
     local arg = (argstr or ""):explode()
@@ -349,5 +513,5 @@ else
   arg[1] = t or ""
   M.main((table.unpack or unpack)(arg))
 end
----------------------------------------- done
+--====================================== done
 --EOF
