@@ -11,6 +11,7 @@
 \newif\ifbxgw@ptex
 \newif\ifbxgw@use@bb
 \newif\ifbxgw@internallua
+\newif\ifbxgw@quirk
 
 %% packages
 \RequirePackage{pdftexcmds}[2009/09/23]% v0.6
@@ -122,6 +123,8 @@
 %\DeclareOption{forcedownload}{\chardef\bxgw@download\tw@}
 \DeclareOption{internallua}{\bxgw@internalluatrue}
 \DeclareOption{nointernallua}{\bxgw@internalluafalse}
+\DeclareOption{quirk}{\bxgw@quirktrue}
+\DeclareOption{noquirk}{\bxgw@quirkfalse}
 %% handling keyval options
 \DeclareOption*{%
   \def\bxgw@next{\setkeys{bxgw}}%
@@ -172,8 +175,15 @@
 
 %% do it
 \let\bxgw@opt@post\@empty
+\ExecuteOptions{quirk}
 \ProcessOptions*
 \bxgw@opt@post
+% TEMPORARY FIX: quirk mode is always on
+\bxgw@quirktrue
+\ifbxgw@quirk
+  \PackageWarningNoLine\bxgw@pkgname
+   {Quirk mode is on}
+\fi
 
 %% driver adjustment (afterwards)
 \@ifpackageloaded{graphics}{%
@@ -591,6 +601,7 @@
   \or % +
     \ifbxgw@ok\else \let\bxgw@rrev\bxgw@latest \fi
   \fi
+  \bxgw@fix@for@quirk %%%% TEMPORARY FIX
   \PackageInfo\bxgw@pkgname
    {Using ver.\bxgw@rrev\space for '\bxgw@glyph'
     (latest=\bxgw@latest),\MessageBreak
@@ -608,6 +619,42 @@
     \ifnum\bxgw@rrev<#1\relax \def\bxgw@rrev{#1}\fi
   \fi
 }
+
+%------- quirk mode stuffs
+\def\bxgw@fix@for@quirk{%
+  \ifbxgw@ok\else \ifnum\bxgw@rrev=\bxgw@latest\relax\else
+    \let\rev\bxgw@resolve@quirk
+    \bxgw@stor
+    \ifbxgw@ok % stale image is available
+      \bxgw@warn@stale@image
+    \else
+      \let\bxgw@tmpb\bxgw@rrev \let\bxgw@rrev\bxgw@latest
+      \let\bxgw@rev\bxgw@rrev
+      \let\rev\bxgw@resolve@sing
+      \bxgw@stor
+      \PackageWarning\bxgw@pkgname
+       {TEMPORARY FIX: The specified version (\bxgw@tmpb) of\MessageBreak
+        glyph '\bxgw@glyph' is unavailable.\MessageBreak
+        The latest version (\bxgw@rrev) will be used instead\MessageBreak
+        here}%
+    \fi
+  \fi\fi
+}
+\ifbxgw@quirk\else
+  \let\bxgw@fix@for@quirk\relax
+\fi
+\def\bxgw@resolve@quirk#1#2{%
+  \ifnum\bxgw@rev=#1\relax
+    \bxgw@oktrue
+  \fi
+}
+\def\bxgw@warn@stale@image{
+  \global\let\bxgw@warn@stale@image\relax
+  \PackageWarningNoLine\bxgw@pkgname
+   {TEMPORARY FIX: Some stale glyph image(s)\MessageBreak
+    will be used}%
+}
+%-------
 
 %% \bxgw@put@glyph
 \def\bxgw@put@glyph{%
