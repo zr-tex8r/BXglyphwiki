@@ -23,7 +23,7 @@
 \bxgw@oktrue
 \ifluatex
   \bxgw@unicodetrue
-  \bxgw@internalluatrue
+  %\bxgw@internalluatrue %% TEMPORARILY DISABLED
 \else\ifxetex
   \bxgw@unicodetrue
 \else\ifbxgw@ptex
@@ -303,6 +303,12 @@
 %--------------------------------------- internallua availability
 
 %% check if 'internallua' is available
+\ifbxgw@internallua\ifluatex
+  \PackageWarningNoLine\bxgw@pkgname
+   {The 'internallua' mode is temporarily\MessageBreak
+    unavailable}
+  \bxgw@internalluafalse
+\fi\fi
 \ifbxgw@internallua
   \ifluatex
     \chardef\bxgw@tmpa=\directlua{
