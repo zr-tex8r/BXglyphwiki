@@ -11,8 +11,8 @@ local M = bxglyphwiki
 M.prog_name = "bxglyphwiki"
 M.version = "0.6"
 M.mod_date = "2020/09/01"
-M.url_json = "http://non-ssl.glyphwiki.org/json?name=%s"
-M.url_svg = "http://non-ssl.glyphwiki.org/glyph/%s@%d.svg"
+M.url_json = "https://glyphwiki.org/json"
+M.url_svg = "https://glyphwiki.org/glyph"
 M.epstopdf = "repstopdf"
 M.extractbb = "extractbb"
 do
@@ -292,7 +292,7 @@ do
   local dum = "\233\150\162\233\128\163\229\173\151"
   function M.do_info(glyph)
     local info = M.read_info(glyph)
-    local json = M.http_get(M.url_json:format(glyph))
+    local json = M.http_get(('%s?name=%s'):format(M.url_json, glyph))
     local latest, rel = M.read_json(json)
     if latest > 0 then
       info.latest = latest
@@ -304,7 +304,8 @@ do
     rev = M.sure(tonumber(rev), "bad number format", rev)
     local info = M.read_info(glyph)
     local fbase = M.glyph_fbase:format(glyph, rev)
-    local svg = M.http_get(M.url_svg:format(glyph, rev))
+    -- For now the revision number is ignored.
+    local svg = M.http_get(('%s/%s.svg'):format(M.url_svg, glyph))
     M.write_glyph(svg, fbase)
     info[rev] = M.timestamp()
     M.write_info(glyph, info)
