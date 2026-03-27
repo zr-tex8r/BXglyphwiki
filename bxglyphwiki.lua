@@ -9,8 +9,8 @@ end
 local M = bxglyphwiki
 ---------------------------------------- interfaces
 M.prog_name = "bxglyphwiki"
-M.version = "0.6"
-M.mod_date = "2020/09/01"
+M.version = "0.7-pre"
+M.mod_date = "2026/03/28"
 M.url_json = "https://glyphwiki.org/json"
 M.url_svg = "https://glyphwiki.org/glyph"
 M.epstopdf = "repstopdf"
