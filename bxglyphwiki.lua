@@ -260,20 +260,8 @@ do
     end
   end
   function M.extract_bbox(fbase)
-    local pbase = M.ppfx..fbase
-    os.execute(M.extractbb.." "..pbase..".pdf")
-    local xbbh = io.open(pbase..".xbb", "rb")
-    M.sure(xbbh, "bbox extraction failure", pbase..".pdf")
-    local bbox
-    while true do
-      local line = xbbh:read()
-      if not line then break end
-      local _, _, t = line:find("^%%%%BoundingBox:%s+(.*)")
-      if t then bbox = t:gsub("%s+$", "") end
-    end
-    xbbh:close()
-    os.remove(pbase..".xbb")
-    return bbox
+    -- Now bbox is a fixed value.
+    return '0 0 1024 1024'
   end
 end
 ---------------------------------------- core procedures
